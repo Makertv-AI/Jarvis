@@ -240,53 +240,237 @@ PAGE = r"""
 <meta name="theme-color" content="#07111f">
 <title>Jarvis · Segreteria</title>
 <style>
-:root{--bg:#07111f;--panel:#0f1b2e;--panel2:#15253b;--line:#263c58;--blue:#2f6fed;--green:#149b68;--red:#ca4d5a;--amber:#b9862f;--text:#f5f7fb;--muted:#9eacc0}
-*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
-.app{max-width:980px;margin:auto;padding:16px 13px 100px}.top{display:flex;align-items:center;justify-content:space-between;gap:10px}.top h1{margin:0;font-size:25px}.sub{font-size:12px;color:var(--muted)}
-.tabs{display:flex;gap:7px;overflow:auto;padding:12px 0 4px;position:sticky;top:0;background:var(--bg);z-index:5}.tab{white-space:nowrap}
-button{border:0;border-radius:11px;padding:11px 13px;background:var(--blue);color:white;font-size:14px;font-weight:700;cursor:pointer}
-button.secondary,.tab{background:var(--panel2)} button.ok{background:var(--green)} button.danger{background:var(--red)} button.warn{background:var(--amber)}
-.tab.active{background:var(--blue)} .view{display:none}.view.active{display:block}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:14px;margin:11px 0}
-.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.stat{background:var(--panel2);border-radius:13px;padding:12px}.stat b{display:block;font-size:20px}.stat span,.small{font-size:12px;color:var(--muted)}
+:root{
+  --bg:#07111f;
+  --bg2:#0b1628;
+  --panel:rgba(18,31,51,.88);
+  --panel-solid:#111f34;
+  --panel2:#182a44;
+  --line:rgba(130,160,200,.17);
+  --blue:#4f7cff;
+  --blue2:#6d5dfc;
+  --green:#20b87a;
+  --red:#e05c68;
+  --amber:#d79d3d;
+  --text:#f7f9fd;
+  --muted:#9aa9bf;
+  --shadow:0 18px 45px rgba(0,0,0,.22);
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{
+  margin:0;
+  min-height:100vh;
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Arial,sans-serif;
+  background:
+    radial-gradient(circle at 10% -10%, rgba(79,124,255,.22), transparent 30%),
+    radial-gradient(circle at 95% 5%, rgba(109,93,252,.16), transparent 26%),
+    linear-gradient(180deg,#081221 0%,#07111f 45%,#060d18 100%);
+}
+.app{max-width:980px;margin:auto;padding:18px 14px 116px}
+.top{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:8px 2px 12px
+}
+.brand{display:flex;align-items:center;gap:12px}
+.logo{
+  width:46px;height:46px;border-radius:15px;display:grid;place-items:center;
+  font-size:21px;font-weight:900;
+  background:linear-gradient(145deg,var(--blue),var(--blue2));
+  box-shadow:0 10px 28px rgba(79,124,255,.32)
+}
+.top h1{margin:0;font-size:27px;letter-spacing:-.6px}
+.sub{font-size:12px;color:var(--muted);margin-top:2px}
+.statusline{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11px;color:#aebbd0}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px rgba(32,184,122,.10)}
+.tabs{
+  display:flex;gap:8px;overflow:auto;padding:8px 0 8px;
+  position:sticky;top:0;z-index:20;
+  background:linear-gradient(180deg,rgba(7,17,31,.98),rgba(7,17,31,.90) 78%,transparent);
+  backdrop-filter:blur(12px);
+  scrollbar-width:none
+}
+.tabs::-webkit-scrollbar{display:none}
+button{
+  border:0;border-radius:13px;padding:11px 14px;
+  background:linear-gradient(135deg,var(--blue),#3f69dd);
+  color:white;font-size:14px;font-weight:750;cursor:pointer;
+  box-shadow:0 6px 16px rgba(0,0,0,.12);
+  transition:transform .12s ease,filter .12s ease,background .12s ease
+}
+button:active{transform:scale(.97)}
+button.secondary,.tab{
+  background:rgba(23,41,66,.92);
+  border:1px solid var(--line);
+  box-shadow:none
+}
+button.ok{background:linear-gradient(135deg,#1caf74,#13865a)}
+button.danger{background:linear-gradient(135deg,#e05c68,#b84250)}
+button.warn{background:linear-gradient(135deg,#d79d3d,#ad7622)}
+.tab{white-space:nowrap;color:#b8c5d7}
+.tab.active{
+  color:white;
+  background:linear-gradient(135deg,rgba(79,124,255,.98),rgba(109,93,252,.92));
+  border-color:transparent;
+  box-shadow:0 8px 24px rgba(79,124,255,.24)
+}
+.view{display:none}.view.active{display:block}
+.hero{
+  position:relative;overflow:hidden;
+  background:linear-gradient(145deg,rgba(37,62,98,.95),rgba(21,38,66,.96));
+  border:1px solid rgba(122,157,208,.17);
+  border-radius:24px;padding:18px;margin:10px 0 13px;
+  box-shadow:var(--shadow)
+}
+.hero:after{
+  content:"";position:absolute;width:180px;height:180px;border-radius:50%;
+  right:-75px;top:-85px;background:rgba(83,117,255,.16)
+}
+.hero h2{margin:0 0 4px;font-size:22px}.hero p{margin:0;color:#b7c4d7;font-size:13px;max-width:560px}
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}
+.quick button{
+  min-height:58px;background:rgba(10,23,40,.62);border:1px solid var(--line);
+  box-shadow:none;padding:8px;font-size:12px
+}
+.quick .qi{display:block;font-size:20px;margin-bottom:3px}
+.card{
+  background:linear-gradient(145deg,rgba(17,31,52,.94),rgba(13,25,43,.94));
+  border:1px solid var(--line);border-radius:20px;padding:15px;margin:12px 0;
+  box-shadow:0 12px 28px rgba(0,0,0,.14);
+  backdrop-filter:blur(10px)
+}
+.card>b:first-child,.sectionTitle{font-size:15px;letter-spacing:.1px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{
+  position:relative;min-height:104px;overflow:hidden;
+  background:linear-gradient(145deg,rgba(25,43,70,.98),rgba(16,30,50,.98));
+  border:1px solid var(--line);border-radius:18px;padding:14px;
+  box-shadow:0 10px 22px rgba(0,0,0,.13)
+}
+.stat:after{
+  position:absolute;right:12px;top:11px;width:30px;height:30px;
+  border-radius:10px;display:grid;place-items:center;font-size:15px;
+  background:rgba(255,255,255,.06)
+}
+.stat:nth-child(1):after{content:"👥"}
+.stat:nth-child(2):after{content:"📅"}
+.stat:nth-child(3):after{content:"🎟️"}
+.stat:nth-child(4):after{content:"€"}
+.stat:nth-child(4){background:linear-gradient(145deg,rgba(62,37,52,.98),rgba(31,28,47,.98))}
+.stat b{display:block;font-size:24px;margin-top:24px;letter-spacing:-.5px}
+.stat span,.small{font-size:12px;color:var(--muted)}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.grow{flex:1}.stack{display:grid;gap:7px}
-input,select,textarea{width:100%;background:#081524;color:white;border:1px solid var(--line);border-radius:10px;padding:11px;font-size:15px}
-textarea{min-height:78px;resize:vertical}.item{padding:12px 0;border-bottom:1px solid var(--line)}.item:last-child{border:0}.item h3{margin:0 0 5px}
-.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:var(--panel2);font-size:12px;margin:2px 3px 2px 0}.good{background:#113e30}.bad{background:#4b1f27}.amber{background:#4a3918}
-.chat{height:310px;overflow:auto;background:#081524;border-radius:13px;padding:10px}.msg{padding:9px;border-radius:11px;margin:7px 0;white-space:pre-wrap}.me{background:#1c2b40}.ai{background:#172d59}
-.confirm{border:1px solid #af8133;background:#2a2314}.empty{text-align:center;color:var(--muted);padding:22px}
-.bottom{position:fixed;bottom:0;left:0;right:0;background:#07111ff3;border-top:1px solid var(--line);padding:9px}.bottomin{max-width:980px;margin:auto;display:flex;gap:8px}
-label{font-size:12px;color:var(--muted);display:block;margin-top:6px}.two{display:grid;grid-template-columns:1fr 1fr;gap:8px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.notice{padding:9px 11px;border-radius:11px;background:#352c16;color:#ffe2a6;font-size:13px;margin:10px 0}
-#mic.listening{background:var(--red)} #voice.on{background:var(--green)}
-@media(min-width:700px){.grid{grid-template-columns:repeat(4,1fr)}}
-@media(max-width:560px){.two,.three{grid-template-columns:1fr}}
+input,select,textarea{
+  width:100%;background:rgba(7,19,34,.92);color:white;
+  border:1px solid rgba(128,157,198,.22);border-radius:13px;
+  padding:12px;font-size:15px;outline:none;transition:border .15s,box-shadow .15s
+}
+input:focus,select:focus,textarea:focus{
+  border-color:rgba(79,124,255,.72);
+  box-shadow:0 0 0 3px rgba(79,124,255,.10)
+}
+textarea{min-height:82px;resize:vertical}
+.item{
+  background:rgba(8,21,37,.48);border:1px solid rgba(125,153,190,.10);
+  padding:12px;border-radius:15px;margin-top:9px
+}
+.item h3{margin:0 0 5px;font-size:16px}
+.pill{
+  display:inline-block;padding:5px 9px;border-radius:999px;
+  background:#1a2c47;border:1px solid rgba(142,169,205,.10);
+  font-size:11px;margin:2px 3px 2px 0;color:#cad4e2
+}
+.good{background:#123d31!important;color:#98e3c1!important}
+.bad{background:#48232b!important;color:#ffb8c0!important}
+.amber{background:#473718!important;color:#ffd890!important}
+.chat{
+  height:330px;overflow:auto;
+  background:linear-gradient(180deg,rgba(6,18,32,.96),rgba(9,23,40,.96));
+  border:1px solid var(--line);border-radius:18px;padding:11px
+}
+.msg{padding:11px 12px;border-radius:15px;margin:8px 0;white-space:pre-wrap;line-height:1.42}
+.me{background:linear-gradient(135deg,#294f92,#2d4472);margin-left:12%}
+.ai{background:#152840;margin-right:8%}
+.confirm{
+  border:1px solid rgba(215,157,61,.44);
+  background:linear-gradient(145deg,rgba(54,43,21,.97),rgba(39,31,18,.97))
+}
+.empty{text-align:center;color:var(--muted);padding:24px}
+.bottom{
+  position:fixed;bottom:0;left:0;right:0;z-index:30;
+  background:rgba(7,17,31,.88);border-top:1px solid var(--line);
+  padding:9px 10px calc(9px + env(safe-area-inset-bottom));
+  backdrop-filter:blur(18px)
+}
+.bottomin{max-width:980px;margin:auto;display:flex;gap:8px}
+.bottomin .grow{
+  background:linear-gradient(135deg,var(--blue),var(--blue2));
+  box-shadow:0 8px 24px rgba(79,124,255,.28)
+}
+label{font-size:11px;color:#aebbd0;display:block;margin:7px 0 4px 2px;font-weight:650}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:9px}.three{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.notice{
+  padding:11px 12px;border-radius:14px;
+  background:rgba(79,54,18,.72);border:1px solid rgba(218,161,61,.28);
+  color:#ffe1a8;font-size:12px;margin:10px 0
+}
+#mic.listening{background:var(--red)}#voice.on{background:var(--green)}
+.softTitle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.softTitle span{font-size:12px;color:var(--muted)}
+@media(min-width:700px){
+  .grid{grid-template-columns:repeat(4,1fr)}
+  .stat{min-height:118px}.stat b{font-size:27px}
+}
+@media(max-width:560px){
+  .two,.three{grid-template-columns:1fr}
+  .quick{grid-template-columns:repeat(2,1fr)}
+  .top h1{font-size:25px}
+  .app{padding-left:12px;padding-right:12px}
+}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="top">
-    <div><h1>Jarvis</h1><div class="sub">Segretaria AI · Lezioni private · Serate di ballo</div></div>
+    <div class="brand">
+      <div class="logo">J</div>
+      <div>
+        <h1>Jarvis</h1>
+        <div class="sub">La tua segretaria personale</div>
+        <div class="statusline"><span class="dot"></span> Online · Lezioni e serate</div>
+      </div>
+    </div>
     <div class="row"><button id="voice" class="secondary" onclick="toggleVoice()">🔊 Voce</button><button class="secondary" onclick="logout()">🔒</button></div>
   </div>
 
   <div id="storageNotice"></div>
 
   <div class="tabs">
-    <button class="tab active" onclick="show('dashboard',this)">Oggi</button>
-    <button class="tab" onclick="show('calendar',this)">Calendario</button>
-    <button class="tab" onclick="show('students',this)">Allievi</button>
-    <button class="tab" onclick="show('events',this)">Serate</button>
-    <button class="tab" onclick="show('tasks',this)">Attività</button>
-    <button class="tab" onclick="show('publish',this)">Pubblicazioni</button>
-    <button class="tab" onclick="show('assistant',this)">Jarvis</button>
+    <button class="tab active" onclick="show('dashboard',this)">🏠 Oggi</button>
+    <button class="tab" onclick="show('calendar',this)">📅 Calendario</button>
+    <button class="tab" onclick="show('students',this)">👥 Allievi</button>
+    <button class="tab" onclick="show('events',this)">💃 Serate</button>
+    <button class="tab" onclick="show('tasks',this)">✅ Attività</button>
+    <button class="tab" onclick="show('publish',this)">📣 Pubblicazioni</button>
+    <button class="tab" onclick="show('assistant',this)">✨ Jarvis</button>
   </div>
 
   <section id="dashboard" class="view active">
+    <div class="hero">
+      <h2>La tua giornata, in un colpo d’occhio</h2>
+      <p>Lezioni, allievi, incassi, serate e promozione: Jarvis tiene tutto ordinato e ti chiede conferma prima di modificare qualcosa.</p>
+      <div class="quick">
+        <button onclick="show('calendar',document.querySelectorAll('.tab')[1])"><span class="qi">＋</span>Lezione</button>
+        <button onclick="show('students',document.querySelectorAll('.tab')[2]);toggleStudentForm()"><span class="qi">👤</span>Allievo</button>
+        <button onclick="show('events',document.querySelectorAll('.tab')[3])"><span class="qi">💃</span>Serata</button>
+        <button onclick="openJarvis()"><span class="qi">✨</span>Chiedi a Jarvis</button>
+      </div>
+    </div>
     <div id="stats" class="grid"></div>
-    <div class="card"><b>Agenda prossime 48 ore</b><div id="agenda48"></div></div>
-    <div class="card"><b>Da controllare</b><div id="alerts"></div></div>
-    <div class="card"><b>Ultime attività</b><div id="activity"></div></div>
+    <div class="card"><div class="softTitle"><b>Agenda prossime 48 ore</b><span>prossimi impegni</span></div><div id="agenda48"></div></div>
+    <div class="card"><div class="softTitle"><b>Da controllare</b><span>priorità</span></div><div id="alerts"></div></div>
+    <div class="card"><div class="softTitle"><b>Ultime attività</b><span>registro</span></div><div id="activity"></div></div>
   </section>
 
   <section id="calendar" class="view">

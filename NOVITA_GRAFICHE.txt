@@ -1,0 +1,16 @@
+JARVIS SECRETARY V2.1 — RESTYLING GRAFICO
+
+- Interfaccia mobile-first più moderna
+- Header con identità Jarvis e stato online
+- Dashboard hero e 4 azioni rapide
+- Statistiche a card con icone
+- Navigazione a pillole con icone
+- Card effetto glass / profondità
+- Form più leggibili e focus evidente
+- Elenchi trasformati in card separate
+- Chat Jarvis più simile a una vera app di messaggistica
+- Barra inferiore più pulita e adatta al telefono
+- Safe-area per iPhone
+- Tutte le funzioni della V2 mantenute
+
+Installazione: sostituire app.py e fare deploy latest commit.
