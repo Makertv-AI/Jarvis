@@ -1,4 +1,5 @@
 import os
+
 from flask import Flask, jsonify, request, render_template_string
 from openai import OpenAI
 
@@ -76,6 +77,7 @@ PAGE = """
       color: white;
       font-size: 16px;
       font-weight: bold;
+      cursor: pointer;
     }
 
     #mic.listening {
@@ -103,7 +105,7 @@ PAGE = """
 
   <div id="chat">
     <div class="msg jarvis">
-      Sono online. Prima premi 🔊 Attiva voce, poi puoi parlarmi.
+      Sono online. Premi 🔊 Attiva voce, poi puoi parlarmi.
     </div>
   </div>
 
@@ -118,17 +120,11 @@ PAGE = """
       Invia
     </button>
 
-    <button
-      id="mic"
-      onclick="startVoice()"
-    >
+    <button id="mic" onclick="startVoice()">
       🎙️ Parla
     </button>
 
-    <button
-      id="voiceBtn"
-      onclick="toggleVoice()"
-    >
+    <button id="voiceBtn" onclick="toggleVoice()">
       🔊 Attiva voce
     </button>
 
@@ -137,7 +133,6 @@ PAGE = """
   <div id="status"></div>
 
 </div>
-
 
 <script>
 
@@ -153,12 +148,11 @@ let recognition = null;
 let pendingVoiceMessage = null;
 
 
-/* =========================================
-   CARICAMENTO VOCI DEL TELEFONO
-   ========================================= */
+/* =========================
+   CARICAMENTO VOCI
+   ========================= */
 
 function loadVoices() {
-
   if (!("speechSynthesis" in window)) {
     return;
   }
@@ -171,9 +165,7 @@ function loadVoices() {
     null;
 }
 
-
 if ("speechSynthesis" in window) {
-
   loadVoices();
 
   window.speechSynthesis.onvoiceschanged = function() {
@@ -182,36 +174,27 @@ if ("speechSynthesis" in window) {
 }
 
 
-/* =========================================
-   ATTIVAZIONE VOCE
-   ========================================= */
+/* =========================
+   ATTIVA / DISATTIVA VOCE
+   ========================= */
 
 function toggleVoice() {
-
   if (!("speechSynthesis" in window)) {
-
-    alert(
-      "La sintesi vocale non è supportata da questo browser."
-    );
-
+    alert("La sintesi vocale non è supportata da questo browser.");
     return;
   }
 
-
   if (voiceEnabled) {
-
     voiceEnabled = false;
 
     window.speechSynthesis.cancel();
 
     voiceButton.textContent = "🔊 Attiva voce";
     voiceButton.classList.remove("enabled");
-
     statusBox.textContent = "Voce disattivata.";
 
     return;
   }
-
 
   voiceEnabled = true;
 
@@ -221,32 +204,27 @@ function toggleVoice() {
   window.speechSynthesis.cancel();
   window.speechSynthesis.resume();
 
-  const test =
-    new SpeechSynthesisUtterance("Voce attivata.");
-
+  const test = new SpeechSynthesisUtterance("Voce attivata");
   test.lang = "it-IT";
+  test.volume = 1;
+  test.rate = 1;
+  test.pitch = 1;
 
   if (italianVoice) {
     test.voice = italianVoice;
   }
 
-  test.volume = 1;
-  test.rate = 1;
-  test.pitch = 1;
-
   window.speechSynthesis.speak(test);
 
-  statusBox.textContent =
-    "Voce attivata.";
+  statusBox.textContent = "Voce attivata.";
 }
 
 
-/* =========================================
+/* =========================
    JARVIS PARLA
-   ========================================= */
+   ========================= */
 
 function speak(text) {
-
   if (!voiceEnabled) {
     return;
   }
@@ -259,328 +237,178 @@ function speak(text) {
     return;
   }
 
-
   window.speechSynthesis.cancel();
   window.speechSynthesis.resume();
 
-  const utterance =
-    new SpeechSynthesisUtterance(text);
+  const utterance = new SpeechSynthesisUtterance(text);
 
   utterance.lang = "it-IT";
+  utterance.volume = 1;
+  utterance.rate = 1;
+  utterance.pitch = 1;
 
   if (italianVoice) {
     utterance.voice = italianVoice;
   }
 
-  utterance.volume = 1;
-  utterance.rate = 1;
-  utterance.pitch = 1;
-
-
   utterance.onstart = function() {
-
-    statusBox.textContent =
-      "Jarvis sta parlando...";
+    statusBox.textContent = "Jarvis sta parlando...";
   };
 
-
   utterance.onend = function() {
-
     statusBox.textContent = "";
   };
 
-
   utterance.onerror = function(event) {
-
-    statusBox.textContent =
-      "Errore voce: " + event.error;
+    statusBox.textContent = "Errore voce: " + event.error;
   };
 
-
-  /*
-  Piccolo ritardo utile soprattutto
-  sui browser dei telefoni.
-  */
-
   setTimeout(function() {
-
     window.speechSynthesis.resume();
     window.speechSynthesis.speak(utterance);
-
-  }, 200);
+  }, 300);
 }
 
 
-/* =========================================
-   MESSAGGI NELLA CHAT
-   ========================================= */
+/* =========================
+   MESSAGGI CHAT
+   ========================= */
 
 function addMessage(type, text) {
+  const div = document.createElement("div");
 
-  const div =
-    document.createElement("div");
-
-  div.className =
-    "msg " + type;
-
-  div.textContent =
-    text;
+  div.className = "msg " + type;
+  div.textContent = text;
 
   chat.appendChild(div);
-
-  chat.scrollTop =
-    chat.scrollHeight;
+  chat.scrollTop = chat.scrollHeight;
 }
 
 
-/* =========================================
-   INVIO A JARVIS
-   ========================================= */
+/* =========================
+   INVIO MESSAGGIO
+   ========================= */
 
 async function sendMessage(forcedMessage = null) {
-
   const message =
     forcedMessage !== null
       ? forcedMessage.trim()
       : input.value.trim();
 
-
   if (!message) {
     return;
   }
 
-
-  addMessage(
-    "user",
-    message
-  );
-
+  addMessage("user", message);
 
   input.value = "";
-
-  statusBox.textContent =
-    "Jarvis sta pensando...";
-
+  statusBox.textContent = "Jarvis sta pensando...";
 
   try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        message: message
+      })
+    });
 
-    const response =
-      await fetch("/api/chat", {
-
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
-
-        body: JSON.stringify({
-          message: message
-        })
-
-      });
-
-
-    const data =
-      await response.json();
-
+    const data = await response.json();
 
     if (data.reply) {
-
-      addMessage(
-        "jarvis",
-        data.reply
-      );
-
+      addMessage("jarvis", data.reply);
       statusBox.textContent = "";
+      speak(data.reply);
+    } else {
+      const errorText = data.error || "Errore sconosciuto.";
 
-      speak(
-        data.reply
-      );
-
-    }
-
-    else {
-
-      const errorText =
-        data.error ||
-        "Errore sconosciuto.";
-
-      addMessage(
-        "jarvis",
-        errorText
-      );
-
+      addMessage("jarvis", errorText);
       statusBox.textContent = "";
     }
 
-  }
-
-  catch (error) {
-
-    addMessage(
-      "jarvis",
-      "Errore di connessione."
-    );
-
+  } catch (error) {
+    addMessage("jarvis", "Errore di connessione.");
     statusBox.textContent = "";
   }
 }
 
 
-/* =========================================
-   INVIO CON TASTO ENTER
-   ========================================= */
+/* =========================
+   INVIO CON ENTER
+   ========================= */
 
-input.addEventListener(
-  "keydown",
-  function(event) {
-
-    if (
-      event.key === "Enter" &&
-      !event.shiftKey
-    ) {
-
-      event.preventDefault();
-
-      sendMessage();
-    }
+input.addEventListener("keydown", function(event) {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    sendMessage();
   }
-);
+});
 
 
-/* =========================================
+/* =========================
    RICONOSCIMENTO VOCALE
-   ========================================= */
+   ========================= */
 
 function startVoice() {
-
   const SpeechRecognition =
     window.SpeechRecognition ||
     window.webkitSpeechRecognition;
 
-
   if (!SpeechRecognition) {
-
-    alert(
-      "Il riconoscimento vocale non è supportato da questo browser."
-    );
-
+    alert("Il riconoscimento vocale non è supportato da questo browser.");
     return;
   }
-
-
-  /*
-  Se la voce non è stata ancora
-  attivata, avvisiamo l'utente.
-  */
 
   if (!voiceEnabled) {
-
-    statusBox.textContent =
-      "Prima premi 🔊 Attiva voce.";
-
+    statusBox.textContent = "Prima premi 🔊 Attiva voce.";
     return;
   }
 
+  recognition = new SpeechRecognition();
 
-  recognition =
-    new SpeechRecognition();
+  recognition.lang = "it-IT";
+  recognition.interimResults = false;
+  recognition.continuous = false;
 
+  recognition.onstart = function() {
+    pendingVoiceMessage = null;
 
-  recognition.lang =
-    "it-IT";
+    micButton.textContent = "🎙️ Ti ascolto...";
+    micButton.classList.add("listening");
 
-  recognition.interimResults =
-    false;
-
-  recognition.continuous =
-    false;
-
-
-  recognition.onstart =
-    function() {
-
-      pendingVoiceMessage =
-        null;
-
-      micButton.textContent =
-        "🎙️ Ti ascolto...";
-
-      micButton.classList.add(
-        "listening"
-      );
-
-      statusBox.textContent =
-        "Sto ascoltando...";
-    };
-
-
-  recognition.onresult =
-    function(event) {
-
-      const spokenText =
-        event.results[0][0].transcript;
-
-      pendingVoiceMessage =
-        spokenText;
-
-      input.value =
-        spokenText;
-
-      statusBox.textContent =
-        "Ho sentito: " + spokenText;
-    };
-
-
-  /*
-  Aspettiamo che il microfono
-  sia realmente chiuso prima
-  di chiedere a Jarvis la risposta.
-
-  Questo evita conflitti audio
-  su molti telefoni.
-  */
-
-  recognition.onend =
-    function() {
-
-      micButton.textContent =
-        "🎙️ Parla";
-
-      micButton.classList.remove(
-        "listening"
-      );
-
-
-      if (pendingVoiceMessage) {
-
-        const message =
-          pendingVoiceMessage;
-
-        pendingVoiceMessage =
-          null;
-
-        sendMessage(message);
-      }
+    statusBox.textContent = "Sto ascoltando...";
   };
 
+  recognition.onresult = function(event) {
+    const spokenText = event.results[0][0].transcript;
 
-  recognition.onerror =
-    function(event) {
+    pendingVoiceMessage = spokenText;
+    input.value = spokenText;
 
-      micButton.textContent =
-        "🎙️ Parla";
+    statusBox.textContent = "Ho sentito: " + spokenText;
+  };
 
-      micButton.classList.remove(
-        "listening"
-      );
+  recognition.onend = function() {
+    micButton.textContent = "🎙️ Parla";
+    micButton.classList.remove("listening");
 
-      statusBox.textContent =
-        "Errore microfono: " +
-        event.error;
-    };
+    if (pendingVoiceMessage) {
+      const message = pendingVoiceMessage;
 
+      pendingVoiceMessage = null;
+
+      sendMessage(message);
+    }
+  };
+
+  recognition.onerror = function(event) {
+    micButton.textContent = "🎙️ Parla";
+    micButton.classList.remove("listening");
+
+    statusBox.textContent = "Errore microfono: " + event.error;
+  };
 
   recognition.start();
 }
@@ -594,111 +422,49 @@ function startVoice() {
 
 @app.route("/")
 def home():
-
-    return render_template_string(
-        PAGE
-    )
+    return render_template_string(PAGE)
 
 
-@app.route(
-    "/api/chat",
-    methods=["POST"]
-)
+@app.route("/api/chat", methods=["POST"])
 def chat():
-
-    data =
-        request.get_json(
-            silent=True
-        ) or {}
-
-    message =
-        str(
-            data.get(
-                "message",
-                ""
-            )
-        ).strip()
-
+    data = request.get_json(silent=True) or {}
+    message = str(data.get("message", "")).strip()
 
     if not message:
+        return jsonify({"error": "Messaggio vuoto"}), 400
 
-        return jsonify({
-            "error":
-            "Messaggio vuoto"
-        }), 400
-
-
-    api_key =
-        os.environ.get(
-            "OPENAI_API_KEY"
-        )
-
+    api_key = os.environ.get("OPENAI_API_KEY")
 
     if not api_key:
-
-        return jsonify({
-            "error":
-            "OPENAI_API_KEY non configurata"
-        }), 500
-
+        return jsonify({"error": "OPENAI_API_KEY non configurata"}), 500
 
     try:
+        client = OpenAI(api_key=api_key)
 
-        client =
-            OpenAI(
-                api_key=api_key
+        response = client.responses.create(
+            model=os.environ.get("OPENAI_MODEL", "gpt-5"),
+            input=message,
+            instructions=(
+                "Sei Jarvis, un assistente personale italiano. "
+                "Rispondi sempre in italiano. "
+                "Sii pratico, chiaro, naturale e conciso. "
+                "Dato che spesso la risposta verrà letta ad alta voce, "
+                "evita formattazioni inutili e risposte eccessivamente lunghe."
             )
-
-
-        response =
-            client.responses.create(
-
-                model=
-                    os.environ.get(
-                        "OPENAI_MODEL",
-                        "gpt-5"
-                    ),
-
-                input=
-                    message,
-
-                instructions=(
-                    "Sei Jarvis, un assistente personale italiano. "
-                    "Rispondi sempre in italiano. "
-                    "Sii pratico, chiaro, naturale e conciso. "
-                    "Dato che spesso la risposta verrà letta ad alta voce, "
-                    "evita formattazioni inutili e risposte eccessivamente lunghe."
-                )
-            )
-
-
-        reply =
-            response.output_text
-
+        )
 
         return jsonify({
-            "reply":
-            reply
+            "reply": response.output_text
         })
 
-
     except Exception as e:
-
         return jsonify({
-            "error":
-            str(e)
+            "error": str(e)
         }), 500
 
 
 if __name__ == "__main__":
-
-    port =
-        int(
-            os.environ.get(
-                "PORT",
-                10000
-            )
-        )
+    port = int(os.environ.get("PORT", "10000"))
 
     app.run(
         host="0.0.0.0",
