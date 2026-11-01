@@ -1,6 +1,11 @@
 import os
 import json
+import io
+import secrets
 import sqlite3
+import hashlib
+import hmac
+import threading
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -9,18 +14,24 @@ from flask import (
     session, redirect, url_for, send_file
 )
 from openai import OpenAI
+from lezioni_integration import register as register_lezioni
 
 APP_TITLE = "Jarvis · Segreteria"
-DB_PATH = os.environ.get("JARVIS_DB_PATH", os.path.join(os.path.dirname(__file__), "jarvis.db"))
+DB_PATH = os.environ.get("JARVIS_DB_PATH") or os.path.join(os.path.dirname(__file__), "jarvis.db")
 ADMIN_PIN = os.environ.get("JARVIS_ADMIN_PIN", "").strip()
+SESSION_KEY_CONFIGURED = len(os.environ.get("JARVIS_SECRET_KEY", "")) >= 32
+_legacy_db_initialized = False
+_legacy_db_lock = threading.Lock()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get(
     "JARVIS_SECRET_KEY",
-    os.environ.get("OPENAI_API_KEY", "jarvis-local-secret-change-me")
+    secrets.token_hex(32)
 )
-
-os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE='Strict',
+                  SESSION_COOKIE_SECURE=os.environ.get('JARVIS_COOKIE_SECURE', '1') != '0',
+                  PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
+                  SESSION_REFRESH_EACH_REQUEST=False)
 
 
 def now_iso():
@@ -31,15 +42,26 @@ def today_iso():
     return datetime.now().date().isoformat()
 
 
-def get_db():
+def _connect_legacy_db():
+    # Only the independent, original secretary uses this temporary local archive.
+    os.makedirs(os.path.dirname(os.path.abspath(DB_PATH)), exist_ok=True)
     con = sqlite3.connect(DB_PATH)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
     return con
 
 
+def get_db():
+    global _legacy_db_initialized
+    with _legacy_db_lock:
+        if not _legacy_db_initialized:
+            init_db()
+    return _connect_legacy_db()
+
+
 def init_db():
-    con = get_db()
+    global _legacy_db_initialized
+    con = _connect_legacy_db()
     con.executescript("""
     CREATE TABLE IF NOT EXISTS students (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -149,20 +171,41 @@ def init_db():
     """)
     con.commit()
     con.close()
+    _legacy_db_initialized = True
 
 
-init_db()
+def auth_binding():
+    # A PIN change revokes cookies even when the stable signing key is retained.
+    return hmac.new(app.secret_key.encode(), b'jarvis-pin-v1\n' + ADMIN_PIN.encode(), hashlib.sha256).hexdigest()
 
 
 def auth_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        if ADMIN_PIN and not session.get("jarvis_auth"):
+        if not ADMIN_PIN:
+            return jsonify({"error": "Configura JARVIS_ADMIN_PIN nel backend per accedere all'archivio Jarvis."}), 503
+        if not SESSION_KEY_CONFIGURED:
+            return jsonify({"error": "Configura JARVIS_SECRET_KEY stabile di almeno 32 caratteri nel backend."}), 503
+        credential = session.get("jarvis_auth")
+        if not isinstance(credential, str) or not hmac.compare_digest(credential, auth_binding()):
             if request.path.startswith("/api/"):
                 return jsonify({"error": "Autenticazione richiesta"}), 401
             return redirect(url_for("login"))
         return fn(*args, **kwargs)
     return wrapper
+
+
+@app.after_request
+def private_responses(response):
+    if request.path.startswith('/api/') or request.path in ('/', '/login', '/logout', '/healthz'):
+        response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@app.get('/healthz')
+def healthz():
+    # Wakes a Free instance without SQLite, a PIN, OpenAI or SiteGround calls.
+    return jsonify(status='ok')
 
 
 def rowdict(row):
@@ -583,7 +626,7 @@ function cancelPending(target){pending=null;$(target).innerHTML=""}
 async function loadAll(){
   let d=await api("/api/bootstrap");DATA=d;
   renderDashboard();renderStudents();renderCalendar();renderEvents();renderTasks();renderPublications();fillSelects();
-  $("storageNotice").innerHTML=d.storage_persistent?"":'<div class="notice">⚠️ Archivio server non ancora configurato come permanente. Prima di inserire dati reali configureremo l’archivio persistente.</div>';
+  $("storageNotice").innerHTML=d.storage_persistent?"":'<div class="notice">Archivio autonomo temporaneo: attività, bozze social e altri dati inseriti qui possono andare persi dopo una sospensione, un riavvio o un aggiornamento. Usa il backup per conservarne una copia. I dati del gestionale Lezioni Studio rimangono su SiteGround.</div>';
 }
 function fillSelects(){
   let opts=DATA.students.filter(s=>s.active).map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join("");
@@ -701,12 +744,15 @@ loadAll().catch(e=>alert(e.message));
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if not ADMIN_PIN:
-        session["jarvis_auth"] = True
-        return redirect(url_for("home"))
+        return jsonify({"error": "Configura JARVIS_ADMIN_PIN nel backend per attivare l'accesso privato."}), 503
+    if not SESSION_KEY_CONFIGURED:
+        return jsonify({"error": "Configura JARVIS_SECRET_KEY stabile di almeno 32 caratteri nel backend."}), 503
     error = ""
     if request.method == "POST":
-        if request.form.get("pin", "") == ADMIN_PIN:
-            session["jarvis_auth"] = True
+        session.clear()
+        if hmac.compare_digest(request.form.get("pin", "").encode(), ADMIN_PIN.encode()):
+            session["jarvis_auth"] = auth_binding()
+            session.permanent = True
             return redirect(url_for("home"))
         error = "PIN non corretto."
     return render_template_string(LOGIN_PAGE, error=error)
@@ -819,7 +865,8 @@ def bootstrap():
 
     con.close()
 
-    storage_persistent = bool(os.environ.get("JARVIS_DB_PATH"))
+    # A custom path does not provide a disk on Render Free.
+    storage_persistent = False
     return jsonify({
         "students": students,
         "lessons": lessons,
@@ -1187,12 +1234,12 @@ def execute_action():
     # Execute only after explicit client confirmation.
     if kind == "add_student":
         with app.test_request_context("/api/students", method="POST", json=payload):
-            session["jarvis_auth"] = True
+            session["jarvis_auth"] = auth_binding()
             return create_student()
 
     if kind == "schedule_lesson":
         with app.test_request_context("/api/lessons", method="POST", json=payload):
-            session["jarvis_auth"] = True
+            session["jarvis_auth"] = auth_binding()
             return create_lesson()
 
     if kind in {"complete_lesson","cancel_lesson"}:
@@ -1215,17 +1262,17 @@ def execute_action():
 
     if kind == "record_payment":
         with app.test_request_context("/api/payments", method="POST", json=payload):
-            session["jarvis_auth"] = True
+            session["jarvis_auth"] = auth_binding()
             return create_payment()
 
     if kind == "create_event":
         with app.test_request_context("/api/events", method="POST", json=payload):
-            session["jarvis_auth"] = True
+            session["jarvis_auth"] = auth_binding()
             return create_event()
 
     if kind == "create_task":
         with app.test_request_context("/api/tasks", method="POST", json=payload):
-            session["jarvis_auth"] = True
+            session["jarvis_auth"] = auth_binding()
             return create_task()
 
     if kind == "draft_publications":
@@ -1233,7 +1280,7 @@ def execute_action():
         if not event_id:
             return jsonify({"error": "event_id mancante"}), 400
         with app.test_request_context(f"/api/events/{event_id}/draft-publications", method="POST"):
-            session["jarvis_auth"] = True
+            session["jarvis_auth"] = auth_binding()
             return draft_publications(event_id)
 
     return jsonify({"error": "Azione non supportata"}), 400
@@ -1247,11 +1294,12 @@ def backup():
     for table in ("students","packages","lessons","payments","events","tasks","publications","activity"):
         data[table] = [dict(r) for r in con.execute(f"SELECT * FROM {table}").fetchall()]
     con.close()
-    path = os.path.join("/tmp", f"jarvis_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    return send_file(path, as_attachment=True, download_name=os.path.basename(path))
+    name = f"jarvis_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    content = io.BytesIO(json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8'))
+    return send_file(content, mimetype='application/json', as_attachment=True, download_name=name)
 
+
+register_lezioni(app, lambda **kwargs: OpenAI(**kwargs), auth_required)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", "10000"))
